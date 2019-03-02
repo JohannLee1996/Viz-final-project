@@ -4,10 +4,54 @@
     <meta charset="UTF-8">
     <title>Visualization Final Project</title>
     <script type="text/javascript" src="http://d3js.org/d3.v5.min.js"></script>
+    <script src="https://unpkg.com/d3-simple-slider/build/d3-simple-slider.js"></script>
+    <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!--<script src="https://d3js.org/topojson.v3.min.js"></script>-->
 
 </head>
 <body>
+<style>
+
+    .ticks {
+        font: 10px sans-serif;
+    }
+
+    .track,
+    .track-inset,
+    .track-overlay {
+        stroke-linecap: round;
+    }
+
+    .track {
+        stroke: #000;
+        stroke-opacity: 0.3;
+        stroke-width: 10px;
+    }
+
+    .track-inset {
+        stroke: #ddd;
+        stroke-width: 8px;
+    }
+
+    .track-overlay {
+        pointer-events: stroke;
+        stroke-width: 50px;
+        stroke: transparent;
+        cursor: crosshair;
+    }
+
+    .handle {
+        fill: #fff;
+        stroke: #000;
+        stroke-opacity: 0.5;
+        stroke-width: 1.25px;
+    }
+
+</style>
+
     <script src="map.js"></script>
+
 
 </body>
 </html>
