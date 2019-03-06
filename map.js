@@ -58,6 +58,8 @@ function all(geojson, csvdata) {
     getCurrentYearData(csvdata, year, currentYearData)
     getBarData(countryCode, currentYearData, bardata)
 
+    console.log(currentYearData)
+
 
     d3.select('.gmap')
         .selectAll('path')
