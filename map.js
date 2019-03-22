@@ -104,6 +104,8 @@ function all(geojson, csvdata) {
             countryCode.value = d.properties.ADM0_A3;
             getBarData(countryCode, currentYearData, bardata)
             barUpdate(bardata)
+            getCurrentCountryData(csvdata, countryCode, linedata)
+            lineUpdate(linedata)
         })
 
     //Drag Slider
@@ -202,12 +204,99 @@ function all(geojson, csvdata) {
     line(linedata)
 }
 
-function getCurrentCountryData(csvdata, countryCode, linedata){
+function lineUpdate(linedata) {
+
+    windowWidth = window.innerWidth;
+    windowHeight = window.innerHeight;
+    var margin = {left: 100, right: 50, top: 20, bottom: 50}
+    var width = windowWidth - margin.left - margin.right;
+    var height = windowWidth / 4 - margin.top - margin.bottom;
+
+    var data = []
+    for (let i = 1960; i < 2018; i++) {
+        data.push(parseFloat(linedata[0][0][d3.format("")(i)]))
+    }
+
+
+    var lined = []
+    for (let i = 1960; i < 2018; i++) {
+        lined.push({x: new Date(i, 1, 1), y: parseFloat(linedata[0][0][d3.format("")(i)])})
+    }
+
+    const xMax = d3.max(data)
+
+    var g = d3.select('#lineg');
+
+
+    var y = d3.scaleLinear()
+        .domain([xMax, 0])
+        .range([0, height]);
+
+    var x = d3.scaleTime()
+        .domain([new Date(1959, 9, 1), new Date(2019, 3, 1)])
+        .range([0, width])
+
+    var xAxis = d3.axisBottom(x)
+        .tickSize(5)
+        .ticks(10)
+
+    var yAxis = d3.axisRight(y)
+        .tickSize(width)
+        .ticks(11)
+        .tickFormat(function (d) {
+            return d;
+        });
+
+    // function customYAxis(g) {
+    //     g.call(yAxis);
+    //     g.select(".domain").remove();
+    // }
+
+    d3.select('#lineXAxis')
+        .transition()
+        .duration(800)
+        .call(xAxis)
+        .selectAll("text")
+        .attr("y", 8)
+        .attr('class', 'bree')
+        .style("text-anchor", "center")
+        .style("font-size", "11px");
+
+    d3.select('#lineYAxis')
+        .transition()
+        .duration(800)
+        .call(yAxis)
+        .selectAll("text")
+        // .attr("y", 0)
+        .attr("x", -6)
+        .attr('class', 'bree')
+        .style("text-anchor", "end")
+        .style("font-size", "10px")
+
+
+    var line = d3.line()
+        .x(function (d) {
+            return x(d.x);
+        }) // set the x values for the line generator
+        .y(function (d) {
+            return y(d.y);
+        }) // set the y values for the line generator
+        .curve(d3.curveMonotoneX)
+
+    d3.select('#linePath')
+        .datum(lined)
+        .attr("class", "line")
+        .attr("d", line);
+
+
+}
+
+function getCurrentCountryData(csvdata, countryCode, linedata) {
     let country = csvdata.filter(dj => dj['Country Code'] == countryCode.value);
     linedata[0] = country;
 }
 
-function line(linedata){
+function line(linedata) {
     windowWidth = window.innerWidth;
     windowHeight = window.innerHeight;
 
@@ -218,28 +307,36 @@ function line(linedata){
         .attr("height", windowWidth / 4)
         .style('background-color', '#eeeeee');
 
-    var margin = {left: 100 ,right: 50,top: 20, bottom: 50}
+    var margin = {left: 100, right: 50, top: 20, bottom: 50}
     var width = windowWidth - margin.left - margin.right;
-    var height = windowWidth/4 - margin.top - margin.bottom;
+    var height = windowWidth / 4 - margin.top - margin.bottom;
 
     var g = svg.append('g')
-        .attr('transform','translate('+margin.left+','+margin.top+')')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+        .attr('id','lineg')
 
     var data = []
-    for(let i=1960;i<2018;i++){
-        data.push(linedata[0][0][d3.format("")(i)])
+    for (let i = 1960; i < 2018; i++) {
+        data.push(parseFloat(linedata[0][0][d3.format("")(i)]))
     }
 
+
+    var lined = []
+    for (let i = 1960; i < 2018; i++) {
+        lined.push({x: new Date(i, 1, 1), y: parseFloat(linedata[0][0][d3.format("")(i)])})
+    }
+
+
     const xMax = d3.max(data)
-    console.log(xMax)
+
 
     var y = d3.scaleLinear()
-        .domain([0, xMax])
-        .range([height,0]);
+        .domain([xMax, 0])
+        .range([0, height]);
 
     var x = d3.scaleTime()
         .domain([new Date(1959, 9, 1), new Date(2019, 3, 1)])
-        .range([0,width])
+        .range([0, width])
 
     var xAxis = d3.axisBottom(x)
         .tickSize(5)
@@ -255,6 +352,7 @@ function line(linedata){
 
     g.append("g")
         .attr("transform", "translate(0," + height + ")")
+        .attr('id', 'lineXAxis')
         .call(xAxis)
         .selectAll("text")
         .attr("y", 8)
@@ -263,14 +361,34 @@ function line(linedata){
         .style("font-size", "11px");
 
     g.append("g")
-        .call(yAxis)
+        .attr('id', 'lineYAxis')
+        .call(customYAxis)
         .selectAll("text")
         // .attr("y", 0)
         .attr("x", -6)
         .attr('class', 'bree')
         .style("text-anchor", "end")
-        .style("font-size", "10px");
+        .style("font-size", "10px")
 
+    var line = d3.line()
+        .x(function (d) {
+            return x(d.x);
+        }) // set the x values for the line generator
+        .y(function (d) {
+            return y(d.y);
+        }) // set the y values for the line generator
+        .curve(d3.curveMonotoneX)
+
+    g.append("path")
+        .attr('id', 'linePath')
+        .datum(lined)
+        .attr("class", "line")
+        .attr("d", line);
+
+    function customYAxis(g) {
+        g.call(yAxis);
+        g.select(".domain").remove();
+    }
 }
 
 function bubble(bubbleData) {
@@ -359,7 +477,7 @@ function bubbleUpdate(bubbleData) {
             d3.select(this)
                 .transition()
                 .duration(800)
-                .attr('r',function(d){
+                .attr('r', function (d) {
                     return d.r;
                 })
                 .style("fill", function (d) {
