@@ -1,19 +1,22 @@
 d3.json('data/worldmap.json').then(function (geojson) {
     d3.csv("data/GDP.csv").then(function (csvdata) {
-        all(geojson, csvdata)
+        d3.csv("data/code.csv").then(function (codecsv) {
+            all(geojson, csvdata, codecsv)
+        });
+
     });
 
 })
 
-function all(geojson, csvdata) {
+function all(geojson, csvdata, codecsv) {
     windowWidth = window.innerWidth;
     windowHeight = window.innerHeight;
 
     var svg = d3.select("#divmap")
         .append("svg")
         .attr('id', 'svgmap')
-        .attr("width", windowWidth)
-        .attr("height", windowWidth / 2)
+        .attr("width", 2 * windowWidth / 3 - 10)
+        .attr("height", windowWidth / 3)
         .style('background-color', '#f0f0f0');
     margin = {top: 50, right: 30, bottom: 30, left: 30};
     width = +svg.attr("width") - margin.left - margin.right;
@@ -26,11 +29,28 @@ function all(geojson, csvdata) {
     var year = {value: '2008'};
     var countryCode = {value: 'CHN'}
 
+
+
     svg.append('text')
         .attr('id', 'info')
         .text('Hover your mouse over a country')
         .attr('x', 20)
         .attr('y', 50)
+
+    var log = d3.scaleLog()
+        .domain([0.1, 4000, 20000])
+        .range(["#ffffff", "rgb(8,50,111)"]);
+
+    svg.append("g")
+        .attr("class", "legendLog")
+        .attr("transform", "translate(" + 20 + "," + height / 2 + ")");
+
+    var logLegend = d3.legendColor()
+        .cells([0.1, 50, 500, 5000, 10000, 15000, 20000])
+        .scale(log);
+
+    svg.select(".legendLog")
+        .call(logLegend);
 
     var projection = d3.geoEquirectangular()
         .scale(Math.min(width / Math.PI, height / Math.PI))
@@ -41,7 +61,7 @@ function all(geojson, csvdata) {
 
 
     var myColor = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, 19390604000000])
+        .domain([0, Math.log(19390604000000)])
 
     var bardata = [];
 
@@ -51,15 +71,23 @@ function all(geojson, csvdata) {
 
     var currentYearData = [];
     var bubbleData = [];
+    var codelist = [];
 
     for (let i = 0; i < csvdata.length; i++) {
         currentYearData.push({});
+    }
+
+    for (let i = 0; i < 40; i++) {
         bubbleData.push({});
+    }
+
+    for (let i = 0; i < codecsv.length; i++) {
+        codelist.push(codecsv[i]["isocode"])
     }
 
     var linedata = [{}];
 
-    getCurrentYearData(csvdata, year, currentYearData)
+    getCurrentYearData(csvdata, year, currentYearData, codelist)
     getBarData(countryCode, currentYearData, bardata)
     getBubbleData(currentYearData, bubbleData)
     getCurrentCountryData(csvdata, countryCode, linedata)
@@ -78,7 +106,7 @@ function all(geojson, csvdata) {
                 return myColor(0)
             } else {
                 const dataGDP = country[0].GDP;
-                return myColor(dataGDP)
+                return myColor(Math.log(dataGDP))
             }
         })
         .style('stroke', 'white')
@@ -139,7 +167,7 @@ function all(geojson, csvdata) {
             })
             .on("start drag", function () {
                 updateSlider(x.invert(d3.event.x));
-                getCurrentYearData(csvdata, year, currentYearData)
+                getCurrentYearData(csvdata, year, currentYearData, codelist)
                 updateColor(currentYearData, myColor)
                 getBarData(countryCode, currentYearData, bardata)
                 barUpdate(bardata)
@@ -168,27 +196,43 @@ function all(geojson, csvdata) {
         year.value = Math.round(h)
     }
 
+    svg.append('text')
+        .attr('id', 'play-button')
+        .attr('x', width / 20)
+        .attr('y', height)
+        .text('Play')
 
     d3.select("#play-button")
-        .text('Play')
         .on("click", function () {
             var button = d3.select(this);
             if (button.text() == "Pause") {
                 moving = false;
-                clearInterval(window.timer1);
                 button.text("Play");
             } else {
                 moving = true;
                 button.text("Pause");
-                var i = 0;
 
-                function timer() {
-                    console.log('mmm');
+                // year.value = '1960';
+
+                function play() {
+                    handle.attr("cx", x(parseInt(year.value)));
+                    getCurrentYearData(csvdata, year, currentYearData, codelist)
+                    updateColor(currentYearData, myColor)
+                    getBarData(countryCode, currentYearData, bardata)
+                    barUpdate(bardata)
+                    getBubbleData(currentYearData, bubbleData)
+                    bubbleUpdate(bubbleData);
+                    year.value = (parseInt(year.value) + 1).toString()
+                    console.log(year.value)
                 }
 
-                window.timer1 = setInterval(timer(), 1000);
+                var t = d3.interval(function () {
+                    play()
+                    if (moving == false || year.value > 2017) t.stop();
+                }, 1500);
             }
         })
+    handle.attr("cx", x(parseInt(year.value)));
 
 //bar chart
 
@@ -229,12 +273,12 @@ function lineUpdate(linedata) {
 
 
     var y = d3.scaleLinear()
-        .domain([xMax, 0])
+        .domain([xMax / 1e9, 0])
         .range([0, height]);
 
     var x = d3.scaleTime()
         .domain([new Date(1959, 9, 1), new Date(2019, 3, 1)])
-        .range([0, width])
+        .range([0, width * 2 / 3 - 20])
 
     var xAxis = d3.axisBottom(x)
         .tickSize(5)
@@ -267,7 +311,6 @@ function lineUpdate(linedata) {
         .duration(800)
         .call(yAxis)
         .selectAll("text")
-        // .attr("y", 0)
         .attr("x", -6)
         .attr('class', 'bree')
         .style("text-anchor", "end")
@@ -279,7 +322,7 @@ function lineUpdate(linedata) {
             return x(d.x);
         }) // set the x values for the line generator
         .y(function (d) {
-            return y(d.y);
+            return y(d.y / 1e9);
         }) // set the y values for the line generator
         .curve(d3.curveMonotoneX)
 
@@ -303,17 +346,17 @@ function line(linedata) {
     var svg = d3.select("#divline")
         .append("svg")
         .attr('id', 'svgmap')
-        .attr("width", windowWidth)
+        .attr("width", 2 * windowWidth / 3 - 10)
         .attr("height", windowWidth / 4)
         .style('background-color', '#eeeeee');
 
-    var margin = {left: 100, right: 50, top: 20, bottom: 50}
+    var margin = {left: 50, right: 50, top: 20, bottom: 50}
     var width = windowWidth - margin.left - margin.right;
     var height = windowWidth / 4 - margin.top - margin.bottom;
 
     var g = svg.append('g')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
-        .attr('id','lineg')
+        .attr('id', 'lineg')
 
     var data = []
     for (let i = 1960; i < 2018; i++) {
@@ -331,12 +374,12 @@ function line(linedata) {
 
 
     var y = d3.scaleLinear()
-        .domain([xMax, 0])
+        .domain([xMax / 1e9, 0])
         .range([0, height]);
 
     var x = d3.scaleTime()
         .domain([new Date(1959, 9, 1), new Date(2019, 3, 1)])
-        .range([0, width])
+        .range([0, width * 2 / 3 - 20])
 
     var xAxis = d3.axisBottom(x)
         .tickSize(5)
@@ -351,7 +394,7 @@ function line(linedata) {
 
 
     g.append("g")
-        .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(" + 0 + "," + height + ")")
         .attr('id', 'lineXAxis')
         .call(xAxis)
         .selectAll("text")
@@ -361,10 +404,10 @@ function line(linedata) {
         .style("font-size", "11px");
 
     g.append("g")
+        .attr("transform", "translate(" + 0 + "," + 0 + ")")
         .attr('id', 'lineYAxis')
         .call(customYAxis)
         .selectAll("text")
-        // .attr("y", 0)
         .attr("x", -6)
         .attr('class', 'bree')
         .style("text-anchor", "end")
@@ -375,7 +418,7 @@ function line(linedata) {
             return x(d.x);
         }) // set the x values for the line generator
         .y(function (d) {
-            return y(d.y);
+            return y(d.y / 1e9);
         }) // set the y values for the line generator
         .curve(d3.curveMonotoneX)
 
@@ -398,16 +441,16 @@ function bubble(bubbleData) {
     var svg = d3.select("#divbubble")
         .append("svg")
         .attr('id', 'svgmap')
-        .attr("width", (windowWidth / 2) - 10)
-        .attr("height", windowWidth / 4);
+        .attr("width", (windowWidth / 3) - 10)
+        .attr("height", windowWidth / 3 - 10);
 
     var data = {'children': bubbleData};
 
     var color = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, 40])
+        .domain([0, 80])
 
     var bubble = d3.pack(data)
-        .size([(windowWidth / 2) - 12, (windowWidth / 4) - 2])
+        .size([(windowWidth / 3) - 20, (windowWidth / 3) - 20])
         .padding(1.5);
 
     var nodes = d3.hierarchy(data)
@@ -433,11 +476,19 @@ function bubble(bubbleData) {
     node.append("circle")
         .attr('class', 'bubbleCircle')
         .attr("r", function (d) {
+            if (d.children) return 0;
             return d.r;
+
         })
         .style("fill", function (d) {
             return color(d.r);
-        });
+        })
+
+    node.append('text')
+        .attr('class', 'bubbletext')
+        .text(d => d.data.name)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'orange')
 
     d3.select(self.frameElement)
         .style("height", (windowWidth / 4) - 2 + "px");
@@ -449,10 +500,10 @@ function bubbleUpdate(bubbleData) {
     var data = {'children': bubbleData};
 
     var color = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, 40])
+        .domain([0, 80])
 
     var bubble = d3.pack(data)
-        .size([(windowWidth / 2) - 12, (windowWidth / 4) - 2])
+        .size([(windowWidth / 3) - 20, (windowWidth / 3) - 20])
         .padding(1.5);
 
     var nodes = d3.hierarchy(data)
@@ -478,6 +529,7 @@ function bubbleUpdate(bubbleData) {
                 .transition()
                 .duration(800)
                 .attr('r', function (d) {
+                    if (d.children) return 0;
                     return d.r;
                 })
                 .style("fill", function (d) {
@@ -511,7 +563,7 @@ function updateColor(currentYearData, myColor) {
                         return myColor(0)
                     } else {
                         const dataGDP = country[0].GDP;
-                        return myColor(dataGDP)
+                        return myColor(Math.log(dataGDP))
                     }
                 })
         })
@@ -526,7 +578,7 @@ function bar(bardata) {
     var svg = d3.select("#divbar")
         .append("svg")
         .attr('id', 'svgmap')
-        .attr("width", (windowWidth / 2) - 10)
+        .attr("width", (windowWidth / 3) - 10)
         .attr("height", windowWidth / 4)
 
     margin = {top: 20, right: 30, bottom: 30, left: 30};
@@ -556,7 +608,7 @@ function bar(bardata) {
     }
 
     var x = d3.scaleLinear()
-        .domain([0, xMax])
+        .domain([0, xMax / 1e9])
         .range([0, width]);
 
     var y = d3.scaleOrdinal()
@@ -605,16 +657,19 @@ function bar(bardata) {
             return i * (height / bardata.length);
         })
         .attr('width', function (d) {
-            return (d.GDP / xMax) * width;
+            if (d.GDP > 0) {
+                return (d.GDP / xMax) * width;
+            }
+
         })
         .attr('height', function () {
             return height / bardata.length - rectPadding;
         })
         .attr('fill', function (d, i) {
             if (i == 4) {
-                return 'orange'
+                return '#fbefcc'
             } else {
-                return 'red'
+                return '#87bdd8'
             }
         })
 }
@@ -638,7 +693,7 @@ function barUpdate(bardata) {
     var xMax = d3.max(arrGDP)
 
     var x = d3.scaleLinear()
-        .domain([0, xMax])
+        .domain([0, xMax / 1e9])
         .range([0, width]);
 
     var y = d3.scaleOrdinal()
@@ -684,7 +739,10 @@ function barUpdate(bardata) {
                 .transition()
                 .duration(800)
                 .attr('width', function (d) {
-                    return (d.GDP / xMax) * width;
+                    if (d.GDP > 0) {
+                        return (d.GDP / xMax) * width;
+                    }
+
                 })
         })
 }
@@ -707,21 +765,24 @@ function getBarData(countryCode, currentYearData, bardata) {
     }
 }
 
-function getCurrentYearData(csvdata, year, currentYearData) {
+function getCurrentYearData(csvdata, year, currentYearData, codelist) {
     let toBeSort = [];
     for (let i = 0; i < csvdata.length; i++) {
-        toBeSort.push([csvdata[i]['Country Name'], csvdata[i]['Country Code'], csvdata[i][year.value]]);
+        if (codelist.indexOf(csvdata[i]['Country Code']) >= 0) {
+            toBeSort.push([csvdata[i]['Country Name'], csvdata[i]['Country Code'], csvdata[i][year.value]]);
+        }
+
     }
     toBeSort.sort(function (a, b) {
         return b[2] - a[2];
     })
-    for (let i = 0; i < csvdata.length; i++) {
+    for (let i = 0; i < toBeSort.length; i++) {
         currentYearData[i] = {name: toBeSort[i][0], code: toBeSort[i][1], GDP: toBeSort[i][2]};
     }
 }
 
 function getBubbleData(currentYearData, bubbleData) {
-    for (let i = 0; i < currentYearData.length; i++) {
+    for (let i = 0; i < 40; i++) {
         bubbleData[i] = currentYearData[i];
     }
 }

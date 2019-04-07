@@ -4,15 +4,24 @@
     <meta charset="UTF-8">
     <title>Visualization Final Project</title>
     <script type="text/javascript" src="http://d3js.org/d3.v5.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.js"></script>
 </head>
 <body>
 <style>
     #divbar {
+        float: right;
+    }
+
+    #divmap {
         float: left;
     }
 
     #divbubble {
         float: right;
+    }
+
+    #divline {
+        float: left;
     }
 
     .ticks {
@@ -51,9 +60,9 @@
     }
 
     #play-button {
-        position: absolute;
-        top: 500px;
-        left: 50px;
+        position: relative;
+        top: 0%;
+        left: 0%;
         background: #f08080;
         padding-right: 26px;
         border-radius: 3px;
@@ -70,9 +79,9 @@
         background-color: #696969;
     }
 
-    .tick line{
+    .tick line {
         opacity: 0.2;
-        stroke-dasharray: 5 5;
+        stroke-dasharray: 5, 5;
     }
 
     .line {
@@ -83,11 +92,12 @@
 
 </style>
 <div id="divmap">
-    <button id = 'play-button'></button>
+    <!--<button id = 'play-button'></button>-->
 </div>
-<div id="divbar"></div>
 <div id="divbubble"></div>
 <div id="divline"></div>
+<div id="divbar"></div>
+
 <script src="map.js"></script>
 
 
